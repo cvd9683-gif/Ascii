@@ -1,0 +1,308 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="See yourself translated into ASCII characters. A tool for understanding digital representation through character-based interpretation." />
+    <title>ASCII Self-Portrait</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  </head>
+  <body>
+    <div id="app">
+      <!-- Privacy notice for screen readers -->
+      <div class="sr-only" role="status" aria-live="polite" id="privacy-notice">
+        All processing happens in your browser. No images are sent to any server.
+      </div>
+
+      <!-- Header -->
+      <header class="header">
+        <h1 class="header__title">ASCII Self-Portrait</h1>
+        <p class="header__subtitle">See yourself through character-based translation</p>
+      </header>
+
+      <!-- Main content area -->
+      <main class="main">
+        <!-- Canvas area -->
+        <section class="canvas-section" aria-label="ASCII output display">
+          <div class="canvas-container">
+            <!-- Hidden video element for webcam -->
+            <video id="webcam-video" class="hidden-video" autoplay playsinline muted></video>
+            <!-- Hidden canvas for image processing -->
+            <canvas id="processing-canvas" class="hidden-canvas"></canvas>
+            <!-- ASCII output display -->
+            <pre id="ascii-output" class="ascii-output" aria-live="off" role="img" aria-label="ASCII representation of your image"></pre>
+            <!-- Loading state -->
+            <div id="loading-state" class="loading-state hidden">
+              <span class="loading-spinner"></span>
+              <span>Initializing camera...</span>
+            </div>
+            <!-- Permission prompt -->
+            <div id="permission-prompt" class="permission-prompt hidden">
+              <div class="permission-content">
+                <h2>Camera Access</h2>
+                <p>This tool translates your webcam feed into ASCII characters in real-time.</p>
+                <p class="privacy-note">All processing happens locally in your browser. Nothing is recorded or sent anywhere.</p>
+                <button id="enable-camera-btn" class="btn btn--primary">Enable Camera</button>
+                <button id="skip-camera-btn" class="btn btn--secondary">Use Image Upload Instead</button>
+              </div>
+            </div>
+            <!-- Error state -->
+            <div id="error-state" class="error-state hidden">
+              <p id="error-message"></p>
+              <button id="retry-btn" class="btn btn--secondary">Try Again</button>
+            </div>
+          </div>
+
+          <!-- Side-by-side toggle -->
+          <div class="view-controls">
+            <label class="toggle-label">
+              <input type="checkbox" id="side-by-side-toggle" class="toggle-input" />
+              <span class="toggle-switch"></span>
+              <span class="toggle-text">Show original</span>
+            </label>
+          </div>
+
+          <!-- Original image preview (for side-by-side) -->
+          <div id="original-preview" class="original-preview hidden">
+            <canvas id="original-canvas"></canvas>
+          </div>
+        </section>
+
+        <!-- Control panel -->
+        <aside class="controls-panel" aria-label="ASCII controls">
+          <!-- Input source -->
+          <section class="control-group">
+            <h2 class="control-group__title">Input</h2>
+            <div class="input-toggle" role="radiogroup" aria-label="Input source">
+              <button
+                id="webcam-btn"
+                class="input-toggle__btn input-toggle__btn--active"
+                role="radio"
+                aria-checked="true"
+                data-source="webcam"
+              >
+                <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <circle cx="12" cy="12" r="3"/>
+                  <path d="M2 12h3m14 0h3M12 2v3m0 14v3"/>
+                </svg>
+                Webcam
+              </button>
+              <button
+                id="upload-btn"
+                class="input-toggle__btn"
+                role="radio"
+                aria-checked="false"
+                data-source="upload"
+              >
+                <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                  <polyline points="17,8 12,3 7,8"/>
+                  <line x1="12" y1="3" x2="12" y2="15"/>
+                </svg>
+                Upload
+              </button>
+            </div>
+            <input type="file" id="file-input" class="sr-only" accept="image/jpeg,image/png,image/webp" />
+            <div id="upload-zone" class="upload-zone hidden">
+              <p>Drop an image here or <button id="browse-btn" class="link-btn">browse</button></p>
+              <p class="upload-zone__formats">JPG, PNG, WebP</p>
+            </div>
+          </section>
+
+          <!-- Character set -->
+          <section class="control-group">
+            <h2 class="control-group__title">Characters</h2>
+            <label class="sr-only" for="charset-select">Character set</label>
+            <select id="charset-select" class="select">
+              <option value="standard">Standard</option>
+              <option value="dense">Dense (more detail)</option>
+              <option value="minimal">Minimal</option>
+              <option value="blocks">Blocks</option>
+              <option value="custom">Custom...</option>
+            </select>
+            <div id="custom-charset-input" class="custom-charset hidden">
+              <label for="custom-chars" class="sr-only">Custom characters (dark to light)</label>
+              <input
+                type="text"
+                id="custom-chars"
+                class="text-input"
+                placeholder="@#%+=:. (dark to light)"
+                value="@#%+=:-. "
+              />
+              <p class="hint">Enter characters from darkest to lightest</p>
+            </div>
+          </section>
+
+          <!-- Resolution -->
+          <section class="control-group">
+            <h2 class="control-group__title">Resolution</h2>
+            <div class="slider-container">
+              <input
+                type="range"
+                id="resolution-slider"
+                class="slider"
+                min="20"
+                max="200"
+                value="80"
+                aria-label="Resolution"
+              />
+              <div class="slider-labels">
+                <span>Abstract</span>
+                <span id="resolution-value" class="slider-value">80 chars</span>
+                <span>Detailed</span>
+              </div>
+            </div>
+          </section>
+
+          <!-- Color mapping -->
+          <section class="control-group">
+            <h2 class="control-group__title">Color</h2>
+
+            <!-- Display mode -->
+            <div class="display-mode" role="radiogroup" aria-label="Display mode">
+              <button class="mode-btn mode-btn--active" data-mode="gradient" role="radio" aria-checked="true">Gradient</button>
+              <button class="mode-btn" data-mode="monochrome" role="radio" aria-checked="false">Mono</button>
+              <button class="mode-btn" data-mode="grayscale" role="radio" aria-checked="false">Gray</button>
+            </div>
+
+            <!-- Color pickers -->
+            <div id="color-pickers" class="color-pickers">
+              <div class="color-picker-row">
+                <div class="color-picker-group">
+                  <label for="dark-color" class="color-label">Dark</label>
+                  <div class="color-input-wrapper">
+                    <input type="color" id="dark-color" class="color-input" value="#1a1a1a" />
+                    <input type="text" id="dark-color-hex" class="hex-input" value="#1a1a1a" maxlength="7" />
+                  </div>
+                </div>
+                <div class="color-gradient-preview" id="gradient-preview"></div>
+                <div class="color-picker-group">
+                  <label for="light-color" class="color-label">Light</label>
+                  <div class="color-input-wrapper">
+                    <input type="color" id="light-color" class="color-input" value="#f5f5f5" />
+                    <input type="text" id="light-color-hex" class="hex-input" value="#f5f5f5" maxlength="7" />
+                  </div>
+                </div>
+              </div>
+
+              <!-- Monochrome color (shown in mono mode) -->
+              <div id="mono-color-picker" class="mono-color-picker hidden">
+                <label for="mono-color" class="color-label">Color</label>
+                <div class="color-input-wrapper">
+                  <input type="color" id="mono-color" class="color-input" value="#00ff00" />
+                  <input type="text" id="mono-color-hex" class="hex-input" value="#00ff00" maxlength="7" />
+                </div>
+              </div>
+            </div>
+
+            <!-- Color presets -->
+            <div class="color-presets">
+              <span class="presets-label">Presets:</span>
+              <div class="preset-buttons" role="group" aria-label="Color presets">
+                <button class="preset-btn" data-dark="#000000" data-light="#ffffff" title="Clinical">
+                  <span class="preset-preview" style="background: linear-gradient(135deg, #000000 50%, #ffffff 50%)"></span>
+                </button>
+                <button class="preset-btn" data-dark="#3d2914" data-light="#f5e6d3" title="Warm">
+                  <span class="preset-preview" style="background: linear-gradient(135deg, #3d2914 50%, #f5e6d3 50%)"></span>
+                </button>
+                <button class="preset-btn" data-dark="#1a2744" data-light="#c8d4e3" title="Cool">
+                  <span class="preset-preview" style="background: linear-gradient(135deg, #1a2744 50%, #c8d4e3 50%)"></span>
+                </button>
+                <button class="preset-btn" data-dark="#704214" data-light="#f4ecd8" title="Vintage">
+                  <span class="preset-preview" style="background: linear-gradient(135deg, #704214 50%, #f4ecd8 50%)"></span>
+                </button>
+                <button class="preset-btn" data-dark="#2d1b4e" data-light="#e8dff5" title="Night">
+                  <span class="preset-preview" style="background: linear-gradient(135deg, #2d1b4e 50%, #e8dff5 50%)"></span>
+                </button>
+                <button class="preset-btn" data-dark="#0d3320" data-light="#c8f7dc" title="Terminal">
+                  <span class="preset-preview" style="background: linear-gradient(135deg, #0d3320 50%, #c8f7dc 50%)"></span>
+                </button>
+              </div>
+            </div>
+          </section>
+
+          <!-- Typography -->
+          <section class="control-group">
+            <h2 class="control-group__title">Typography</h2>
+
+            <!-- Font family -->
+            <div class="control-row">
+              <label for="font-select" class="control-label">Font</label>
+              <select id="font-select" class="select select--small">
+                <option value="'JetBrains Mono', monospace">JetBrains Mono</option>
+                <option value="'Courier New', Courier, monospace">Courier</option>
+                <option value="Monaco, 'Lucida Console', monospace">Monaco</option>
+                <option value="Consolas, monospace">Consolas</option>
+                <option value="'SF Mono', monospace">SF Mono</option>
+                <option value="monospace">System Mono</option>
+              </select>
+            </div>
+
+            <!-- Font size -->
+            <div class="control-row">
+              <label for="font-size-slider" class="control-label">Size</label>
+              <div class="slider-inline">
+                <input type="range" id="font-size-slider" class="slider" min="4" max="20" value="10" />
+                <span id="font-size-value" class="slider-value-inline">10px</span>
+              </div>
+            </div>
+
+            <!-- Line height -->
+            <div class="control-row">
+              <label for="line-height-slider" class="control-label">Line Height</label>
+              <div class="slider-inline">
+                <input type="range" id="line-height-slider" class="slider" min="0.6" max="1.4" step="0.05" value="0.95" />
+                <span id="line-height-value" class="slider-value-inline">0.95</span>
+              </div>
+            </div>
+
+            <!-- Letter spacing -->
+            <div class="control-row">
+              <label for="letter-spacing-slider" class="control-label">Spacing</label>
+              <div class="slider-inline">
+                <input type="range" id="letter-spacing-slider" class="slider" min="-2" max="4" step="0.5" value="0" />
+                <span id="letter-spacing-value" class="slider-value-inline">0px</span>
+              </div>
+            </div>
+          </section>
+
+          <!-- Invert -->
+          <section class="control-group">
+            <label class="toggle-label">
+              <input type="checkbox" id="invert-toggle" class="toggle-input" />
+              <span class="toggle-switch"></span>
+              <span class="toggle-text">Invert brightness</span>
+            </label>
+          </section>
+
+          <!-- Download -->
+          <section class="control-group">
+            <button id="download-btn" class="btn btn--full">
+              <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                <polyline points="7,10 12,15 17,10"/>
+                <line x1="12" y1="15" x2="12" y2="3"/>
+              </svg>
+              Download PNG
+            </button>
+          </section>
+        </aside>
+      </main>
+
+      <!-- Footer -->
+      <footer class="footer">
+        <p class="footer__privacy">
+          <svg class="icon icon--small" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+            <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+          </svg>
+          All processing happens in your browser. Nothing is stored or sent anywhere.
+        </p>
+      </footer>
+    </div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
